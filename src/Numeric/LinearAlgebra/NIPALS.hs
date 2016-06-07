@@ -1,4 +1,5 @@
-{-# LANGUAGE ScopedTypeVariables, FlexibleContexts #-}
+{-# LANGUAGE FlexibleContexts    #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 -- | Nonlinear Iterative Partial Least Squares
 module Numeric.LinearAlgebra.NIPALS
     ( -- * Simplified Interface
@@ -9,8 +10,8 @@ module Numeric.LinearAlgebra.NIPALS
     , residual
     ) where
 
-import Data.List (foldl1')
-import Numeric.LinearAlgebra
+import           Data.List             (foldl1')
+import           Numeric.LinearAlgebra
 
 -- | Calculate the first principal component of a set of samples.
 --
@@ -19,9 +20,9 @@ import Numeric.LinearAlgebra
 -- or 'leftSV'
 --
 -- Example:
--- 
+--
 -- > let (pc,scores,residuals) = firstPC $ fromRows samples
--- 
+--
 -- This is calculated by providing a default estimate of the scores to
 -- 'firstPCFromScores'
 firstPC :: Matrix Double -> (Vector Double, Vector Double, Matrix Double)
@@ -41,9 +42,9 @@ firstPC m = firstPCFromScores m t0
 -- algorthm to converge much faster.
 --
 -- Example:
--- 
+--
 -- > let (pc,scores,residuals) = firstPCFromScores (fromRows samples) scoresGuess
--- 
+--
 firstPCFromScores :: Matrix Double
                   -> Vector Double
                   -> (Vector Double, Vector Double, Matrix Double)
@@ -56,25 +57,25 @@ firstPCFromScores m t0 = (p,t,r)
       (t,p) = let steps' = zip convergence $ tail steps
                   steps'' = dropWhile (\(c,_) -> c > threshold) steps'
               in snd $ head steps''
-      r = m `sub` (t `outer` p)
+      r = m - (t `outer` p)
 
       refine (t,_) = (t', p')
           where
-            p' = toUnit (trans m <> t)
-            t' = m <> p'
+            p' = toUnit (tr m #> t)
+            t' = m #> p'
 
-      threshold = 16*eps
+      threshold = 16*peps
 
 diffScores :: Vector Double -> Vector Double -> Double
 diffScores ta tb = let xa = ta<.>ta
                        xb = tb<.>tb
                        x = abs $ xa - xb
-                   in (x / (eps+xb)) :: Double
+                   in (x / (peps+xb)) :: Double
 
 toUnit :: Vector Double -> Vector Double
-toUnit v = if mag <= 0.0 then dim v |> (1 : repeat 0) else scale (1/mag) v
+toUnit v = if mag <= 0.0 then size v |> (1 : repeat 0) else scale (1/mag) v
     where
-      mag = norm2 v
+      mag = norm_2 v
 
 -- | Calculate the first principal component -- calculating the
 -- samples fresh on every pass.
@@ -107,7 +108,7 @@ firstPCFromScoresM samplesM t0 = do
           let p' = toUnit p
           t' <- samplesM >>= (\s -> return $ mult1Pass s p')
           return (t',p')
-        threshold = 16 * eps
+        threshold = 16 * peps
         iter t0 t1 p1 | diff < threshold = return $ (p1,t1)
                       | otherwise = do
                                    (t2,p2) <- refine t1
@@ -135,4 +136,4 @@ residual s p t = r
     where
       ts = toList t
       comp = map (`scale` p) ts
-      r = zipWith sub s comp
+      r = zipWith (-) s comp

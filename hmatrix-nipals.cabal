@@ -71,7 +71,7 @@ Executable test
     Build-depends:
       QuickCheck >= 2.4,
       base >= 3 && < 5,
-      hmatrix >= 0.11,
+      hmatrix >= 0.17,
       test-framework >= 0.3,
       test-framework-quickcheck2 >= 0.2.9
   else
